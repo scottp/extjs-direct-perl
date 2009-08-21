@@ -1,4 +1,24 @@
-Performance
+==============================================================================
+Versions
+==============================================================================
+
+simple/
+	A simple implementation using the least amount of code, but still being
+	basically reliable and secure. This implementation is useful as a basis
+	for starting other development systems.
+
+acl/
+	Based on simple, but also includes ability to do basic access controls
+	on each method - thus providing a security above the application layer.
+
+test/
+	Test Javascript and HTML. You will also need ExtJS 3.n
+
+
+
+==============================================================================
+Performance Improvements
+==============================================================================
 
 	- If API is introspective, it must be cached
 	- Each request could be done concurrently - when to create a thread?
