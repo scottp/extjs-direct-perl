@@ -2,4 +2,6 @@ Performance
 
 	- If API is introspective, it must be cached
 	- Each request could be done concurrently - when to create a thread?
+	- Keep the objects in stash/memory rather than instantiating
+	  Or consider not instantiating at all and using class methods
 

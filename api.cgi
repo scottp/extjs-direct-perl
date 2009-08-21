@@ -1,4 +1,4 @@
-#!/opt/local/bin/perl
+#!/usr/bin/perl
 use warnings;
 use strict;
 use CGI qw/:standard/;
@@ -26,7 +26,7 @@ foreach my $class (keys %$CONFIG) {
 print header(-type => 'text/plain');
 print "Ext.app.REMOTING_API = ";
 print to_json({
-	url => '/data/router',
+	url => '/remoting/cgi/router.cgi',
 	type => 'remoting',
 	actions => $actions,
 });

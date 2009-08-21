@@ -38,7 +38,19 @@ Ext.onReady(function(){
         defaultType: 'textfield',
         items: [{
             fieldLabel: 'Name',
-            name: 'name'
+            name: 'name',
+			validator: function(value) {
+				var that = this;
+				Profile.doTest(value, function(result, e) {
+					if (result == true) {
+						that.clearInvalid();
+					}
+					else {
+						that.markInvalid(result);
+					}
+				});
+				return true;
+			}
         },{
             fieldLabel: 'Email',
             msgTarget: 'side',

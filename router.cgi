@@ -3,6 +3,8 @@ use warnings;
 use strict;
 # use CGI qw/:standard/;
 use JSON;
+use lib '.';
+use Demo;
 
 # ROUTER - the basics
 
@@ -35,10 +37,15 @@ foreach my $request (@$data) {
 		die "BAD REQUEST - Invalid action/method - $action/$method";
 	}
 
+	# Security check - access control rules
+
 	# Call the method (consider eval, capture errors etc)
-	my $class = $CONFIG->{$action}{class};
+	# my $class = $CONFIG->{$action}{class};
+	my $class = "Demo";
+	# TODO: Instead of instantiating the object, have that as an otion in the
+	# config, including parameters to new
 	my $obj = $class->new();
-	my $result = $obj->$method($data);
+	my $result = $obj->$method(ref($data) eq "ARRAY" ? @$data : ());
 	
 	# OUTPUT: {"type":"rpc","tid":2,"action":"TestAction","method":"doEcho","result":"sample"},
 	push @results, {
