@@ -35,3 +35,12 @@ Performance Improvements
 	- Keep the objects in stash/memory rather than instantiating
 	  Or consider not instantiating at all and using class methods
 
+
+==============================================================================
+COPYRIGHT / LICENSE
+==============================================================================
+Copyright 2009 Scott Penrose <scottp@dd.com.au> http://scott.dd.com.au/
+
+The perl code and examples are released using the Artistic 2 license
+http://www.perlfoundation.org/artistic_license_2_0
+
