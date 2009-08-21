@@ -1,4 +1,14 @@
 ==============================================================================
+EXTJS-REMOTE-PERL
+==============================================================================
+
+ExtJS-remote-perl is a minimal implementation of the Ext.Direct server side
+stack. Originally this has been written as a reference implementation. The
+simple version is as short as possible and requires only the JSON library. More
+complicated version which incorporate access control and introspection have
+been started.
+
+==============================================================================
 Versions
 ==============================================================================
 
