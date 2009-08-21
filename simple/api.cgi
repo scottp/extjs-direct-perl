@@ -22,11 +22,14 @@ foreach my $class (keys %$CONFIG) {
 	$actions->{$class} = \@methods;
 }
 
+my $url = $ENV{SCRIPT_NAME};
+$url =~ s/api/router/;
+
 # NOTE: This is not JSON, it is actual Javascript being laoded ! Thus the "Ext.app... ="
 print header(-type => 'text/plain');
 print "Ext.app.REMOTING_API = ";
 print to_json({
-	url => '/remoting/cgi/router.cgi',
+	url => $url,
 	type => 'remoting',
 	actions => $actions,
 });
