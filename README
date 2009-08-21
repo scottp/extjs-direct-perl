@@ -1,0 +1,5 @@
+Performance
+
+	- If API is introspective, it must be cached
+	- Each request could be done concurrently - when to create a thread?
+
