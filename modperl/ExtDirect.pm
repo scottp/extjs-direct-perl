@@ -5,8 +5,6 @@ use strict;
 use version; our $VERSION = qv('0.0.3');
 use Carp;
 use JSON;
-
-# mod_perl
 use mod_perl2 ;
 use Apache2::RequestRec ();
 use Apache2::RequestIO ();
@@ -14,33 +12,10 @@ use Apache2::Const -compile => qw(OK NOT_FOUND HTTP_MOVED_TEMPORARILY);
 use URI::Escape;
 use Apache2::RequestUtil;
 use Apache2::Request;
+use Apache2::Log ;
 
 # Store configs by file name
 our %configs = ();
-
-=head1 NOTES
-
-Some configuration notes
-
-# XXX should I use one handler with /api and /router
-
-# This
-<Location /data>
-	SetHandler modperl
-	PerlResponseHandler ExtDirect
-</Location>
-
-# OR
-<Location /data/api>
-	SetHandler modperl
-	PerlResponseHandler ExtDirect->api
-</Location>
-<Location /data/router>
-	SetHandler modperl
-	PerlResponseHandler ExtDirect->router
-</Location>
-
-=cut
 
 # ======================================================================
 # Local data store
@@ -53,8 +28,15 @@ my $config;
 # objects
 # TODO: Make it optional, and have Apache load data on demand if required
 # ======================================================================
-sub child_init {
-	my ($child_pool, $s) = @_;
+sub post_config {
+	my ($conf_pool, $log_pool, $temp_pool, $s) = @_;
+	$s->log->debug("ExtDirect: Child init");
+	#my $config = $s->dir_config('ExtDirect_Preload');
+	my $config = "/home/ubuntu/4gw/extjs-direct-perl/modperl/config.pl";
+	foreach my $f (split(/,/, $config)) {
+		$s->log->debug("ExtDirect: Child init - $f");
+		_config($f, $s);
+	}
 	return Apache2::Const::OK;
 }
 
@@ -65,9 +47,11 @@ sub handler {
 	my ($r) = @_;
 	my $uri = $r->path_info;
 	if ($uri =~ /api/) {
+		$r->log->debug("ExtDirect: handler -> api");
 		return api($r);
 	}
 	else {
+		$r->log->debug("ExtDirect: handler -> router");
 		return router($r);
 	}
 }
@@ -80,7 +64,7 @@ sub api {
 
 	# CONFIG ?
 	# TODO change to _get - which would do config, init, cache etc
-	my $config = _config($r);
+	my $config = _config($r->dir_config("ConfigFile"), $r);
 
 	my $actions = {};
 	foreach my $action (keys %$config) {
@@ -129,7 +113,7 @@ sub api {
 sub router {
 	my ($r) = @_;
 
-	my $config = _config($r);
+	my $config = _config($r->dir_config("ConfigFile"), $r);
 
 	# INPUTS?
 	#	For now assume HTTP Post Data (not supporting separate fields yet)
@@ -164,6 +148,8 @@ sub router {
 			die "BAD REQUEST - Invalid action/method - $action/$method";
 		}
 
+		$r->log->debug("ExtDirect: Executing $action/$method");
+
 		# Security check - access control rules
 
 		# Call the method (consider eval, capture errors etc)
@@ -195,15 +181,16 @@ sub router {
 
 # Configuration - return the configuraiton
 sub _config {
-	my ($r) = @_;
+	my ($file, $r) = @_;
 
 	# Configuration file?
 	#	TODO: Multiple configuration formats
 	#		e.g. Direct Apache config
 	#		Perl configuration
-	my $file = $r->dir_config("ConfigFile");
+	# my $file = $r->dir_config("ConfigFile");
 
 	if (!exists($configs{$file})) {
+		$r->log->debug("ExtDirect: Loading config from $file");
 		my $config = do $file;
 		if ($@) { die "Failed to read config file $file - $@" }
 		# _init if not already
@@ -245,7 +232,23 @@ This document describes IlodeAuth::Apache version 0.0.1
 
 =head1 SYNOPSIS
 
-	use ExtDirect;
+	PerlModule ExtDirect
+
+	# This
+	<Location /data>
+		SetHandler modperl
+		PerlResponseHandler ExtDirect
+	</Location>
+
+	# OR
+	<Location /data/api>
+		SetHandler modperl
+		PerlResponseHandler ExtDirect->api
+	</Location>
+	<Location /data/router>
+		SetHandler modperl
+		PerlResponseHandler ExtDirect->router
+	</Location>
 
 =head1 DESCRIPTION
 
