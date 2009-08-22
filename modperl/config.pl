@@ -42,6 +42,7 @@
 			getLocationInfo => { params => 1 },
 					# NOTE: Should be a JSON true - how?
 			updateBasicInfo => { params => 2, formHandler => 1, },
+			doTest => { params => 1 },
 		},
 	},
 

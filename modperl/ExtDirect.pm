@@ -1,4 +1,4 @@
-package ExtDirect
+package ExtDirect;
 # TODO: Use an apache name space, e.g. Apache2::ExtDirect
 use warnings;
 use strict;
@@ -11,8 +11,12 @@ use mod_perl2 ;
 use Apache2::RequestRec ();
 use Apache2::RequestIO ();
 use Apache2::Const -compile => qw(OK NOT_FOUND HTTP_MOVED_TEMPORARILY);
-use Apache2::TrapSubRequest;
 use URI::Escape;
+use Apache2::RequestUtil;
+use Apache2::Request;
+
+# Store configs by file name
+our %configs = ();
 
 =head1 NOTES
 
@@ -22,14 +26,17 @@ Some configuration notes
 
 # This
 <Location /data>
+	SetHandler modperl
 	PerlResponseHandler ExtDirect
 </Location>
 
 # OR
 <Location /data/api>
+	SetHandler modperl
 	PerlResponseHandler ExtDirect->api
 </Location>
 <Location /data/router>
+	SetHandler modperl
 	PerlResponseHandler ExtDirect->router
 </Location>
 
@@ -76,20 +83,20 @@ sub api {
 	my $config = _config($r);
 
 	my $actions = {};
-	foreach my $class (keys %$config) {
+	foreach my $action (keys %$config) {
 		# The methods...
 		my @methods;
-		foreach my $method (keys %{$config->{$class}}) {
+		foreach my $method (keys %{$config->{$action}{Methods}}) {
 			push @methods, {
 				name => $method,
-				len => $config->{$class}{$method}{params},
+				len => $config->{$action}{Methods}{$method}{params},
 			};
 		}
-		$actions->{$class} = \@methods;
+		$actions->{$action} = \@methods;
 	}
 
 	# TODO: Consider overload in config else fall back to this
-	my $uri = $r->path_info;
+	my $uri = $r->uri;
 	if ($uri =~ /api/) {
 		$uri =~ s/api/router/;
 	}
@@ -102,12 +109,12 @@ sub api {
 
 	# XXX what type should this Javascript be output as?
 	$r->content_type('text/plain');
-	# $r->rflush();
+	$r->rflush();
 
 	$r->print(
 		"Ext.app.REMOTING_API = "
 			. to_json({
-			url => $url,
+			url => $uri,
 			type => 'remoting',
 			actions => $actions,
 		})
@@ -122,6 +129,8 @@ sub api {
 sub router {
 	my ($r) = @_;
 
+	my $config = _config($r);
+
 	# INPUTS?
 	#	For now assume HTTP Post Data (not supporting separate fields yet)
 	#	Can be single entry - {...}
@@ -129,8 +138,10 @@ sub router {
 
 	# XXX This is high risk - reading in data and parsing as JSON, likely to fail
 
-	# Read raw input
-	my $content = $r->content;
+	# Read raw input (can I just use $r->content ?)
+	my $content = "";
+	die "No post data" unless ($r->headers_in->{'Content-length'} > 0);
+	$r->read($content,$r->headers_in->{'Content-length'});
 	my $data = from_json($content);
 
 	# Normalise into an array !
@@ -149,19 +160,18 @@ sub router {
 		my $data = $request->{data};
 
 		# If it exists ! (security issue)
-		unless ($CONFIG->{$action}{$method}) {
+		unless ($config->{$action}{Methods}{$method}) {
 			die "BAD REQUEST - Invalid action/method - $action/$method";
 		}
 
 		# Security check - access control rules
 
 		# Call the method (consider eval, capture errors etc)
-		# my $class = $CONFIG->{$action}{class};
-		my $class = "Demo";
+		my $class = $config->{$action}{Class} || $action;
 		# TODO: Instead of instantiating the object, have that as an otion in the
 		# config, including parameters to new
-		my $obj = $class->new();
-		my $result = $obj->$method(ref($data) eq "ARRAY" ? @$data : ());
+		# XXX Support instantiation
+		my $result = $class->$method(ref($data) eq "ARRAY" ? @$data : ());
 		
 		# OUTPUT: {"type":"rpc","tid":2,"action":"TestAction","method":"doEcho","result":"sample"},
 		push @results, {
@@ -174,7 +184,7 @@ sub router {
 	}
 
 	$r->content_type('text/plain');
-	# $r->rflush();
+	$r->rflush();
 	$r->print(to_json(\@results));
 	return Apache2::Const::OK;
 }
@@ -182,21 +192,26 @@ sub router {
 # ======================================================================
 # Helpers
 # ======================================================================
-# Return the location, without "api" or "router"
-sub _location {
-}
 
 # Configuration - return the configuraiton
 sub _config {
 	my ($r) = @_;
+
 	# Configuration file?
-	# Load file?
-	# Cache file?
-	my $config = {};
-	# _init if not already
-	_init($config);
-	# Return hash
-	return $config;
+	#	TODO: Multiple configuration formats
+	#		e.g. Direct Apache config
+	#		Perl configuration
+	my $file = $r->dir_config("ConfigFile");
+
+	if (!exists($configs{$file})) {
+		my $config = do $file;
+		if ($@) { die "Failed to read config file $file - $@" }
+		# _init if not already
+		_init($config);
+		# Cache file?
+		$configs{$file} = $config;
+	}
+	return $configs{$file};
 }
 
 # Init the components based on the config input
