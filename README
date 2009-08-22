@@ -21,6 +21,11 @@ acl/
 	Based on simple, but also includes ability to do basic access controls
 	on each method - thus providing a security above the application layer.
 
+modperl/
+	A modperl version of simple. Has some nice features like caching the
+	configuration, preloading the classes at apache startup and a choice
+	of class methods of instantiation for each action.
+
 test/
 	Test Javascript and HTML. You will also need ExtJS 3.n
 
