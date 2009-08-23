@@ -1,43 +1,55 @@
-package ExtDirect;
-# TODO: Use an apache name space, e.g. Apache2::ExtDirect
+package Apache::RPC::ExtDirect;
 use warnings;
 use strict;
 use version; our $VERSION = qv('0.0.3');
-use Carp;
 use JSON;
 use mod_perl2 ;
 use Apache2::RequestRec ();
 use Apache2::RequestIO ();
 use Apache2::Const -compile => qw(OK NOT_FOUND HTTP_MOVED_TEMPORARILY);
-use URI::Escape;
 use Apache2::RequestUtil;
-use Apache2::Request;
+# use Apache2::Request;
 use Apache2::Log ;
 
+# ======================================================================
+# CONFIG AND DATA STORE
+# ======================================================================
 # Store configs by file name
 our %configs = ();
-
-# ======================================================================
-# Local data store
-# ======================================================================
-# Configuration - (XXX this should be per Location, currently only one)
-my $config;
 
 # ======================================================================
 # Load configuration file, and preload all classes & instantiate required 
 # objects
 # TODO: Make it optional, and have Apache load data on demand if required
+# TODO: Document that you can do a postconfig or child init, depending
+# on your instantiation requirements (e.g. if connecting to a DB you need
+# to use Child init, if not, then you can do it pre-fork)
 # ======================================================================
 sub post_config {
 	my ($conf_pool, $log_pool, $temp_pool, $s) = @_;
-	$s->log->debug("ExtDirect: Child init");
 	#my $config = $s->dir_config('ExtDirect_Preload');
+	# XXX HACK !
 	my $config = "/home/ubuntu/4gw/extjs-direct-perl/modperl/config.pl";
+	_preload($s, $config);
+	return Apache2::Const::OK;
+}
+
+sub child_init {
+	my ($self, $child_pool, $s) = @_;
+	#my $config = $s->dir_config('ExtDirect_Preload');
+	# XXX HACK !
+	my $config = "/home/ubuntu/4gw/extjs-direct-perl/modperl/config.pl";
+	_preload($s, $config);
+	return Apache2::Const::OK;
+}
+
+sub _preload {
+	my ($s, $config) = @_;
+	$s->log->debug("ExtDirect: Child init");
 	foreach my $f (split(/,/, $config)) {
 		$s->log->debug("ExtDirect: Child init - $f");
 		_config($f, $s);
 	}
-	return Apache2::Const::OK;
 }
 
 # ======================================================================
@@ -108,35 +120,31 @@ sub api {
 }
 
 # ======================================================================
-# Router - Handle all incoming requrests
+# ROUTER - Handle all incoming requrests
 # ======================================================================
 sub router {
 	my ($r) = @_;
 
 	my $config = _config($r->dir_config("ConfigFile"), $r);
 
-	# INPUTS?
-	#	For now assume HTTP Post Data (not supporting separate fields yet)
+	# XXX INPUTS?
+	#	For now assume HTTP Post Data (not supporting separate fields yet, e.g. form post)
 	#	Can be single entry - {...}
 	#	or Multiple entry [{...},{...}]
-
 	# XXX This is high risk - reading in data and parsing as JSON, likely to fail
 
 	# Read raw input (can I just use $r->content ?)
 	my $content = "";
+	# TODO consider checking it is post ! (it must be)
 	die "No post data" unless ($r->headers_in->{'Content-length'} > 0);
 	$r->read($content,$r->headers_in->{'Content-length'});
 	my $data = from_json($content);
-
 	# Normalise into an array !
-	if (ref($data) ne "ARRAY") {
-		$data = [ $data ];
-	}
+	if (ref($data) ne "ARRAY") { $data = [ $data ]; }
 
 	# For each reqeust
 	my @results;
 	foreach my $request (@$data) {
-		# INPUT: {"action":"TestAction","method":"doEcho","data":["sample"],"type":"rpc","tid":2},
 		# TODO: Data security on inputs
 		my $action = $request->{action};
 		my $method = $request->{method};
@@ -153,11 +161,14 @@ sub router {
 		# Security check - access control rules
 
 		# Call the method (consider eval, capture errors etc)
-		my $class = $config->{$action}{Class} || $action;
-		# TODO: Instead of instantiating the object, have that as an otion in the
-		# config, including parameters to new
-		# XXX Support instantiation
-		my $result = $class->$method(ref($data) eq "ARRAY" ? @$data : ());
+		my $result;
+		if ($config->{$action}{Instantiate}) {
+			$result = $config->{$action}{Object}->$method(ref($data) eq "ARRAY" ? @$data : ());
+		}
+		else {
+			my $class = $config->{$action}{Class} || $action;
+			$result = $class->$method(ref($data) eq "ARRAY" ? @$data : ());
+		}
 		
 		# OUTPUT: {"type":"rpc","tid":2,"action":"TestAction","method":"doEcho","result":"sample"},
 		push @results, {
@@ -187,7 +198,8 @@ sub _config {
 	#	TODO: Multiple configuration formats
 	#		e.g. Direct Apache config
 	#		Perl configuration
-	# my $file = $r->dir_config("ConfigFile");
+	#		Others, e.g. YAML
+	#		OR Make sure this code can be overloaded !
 
 	if (!exists($configs{$file})) {
 		$r->log->debug("ExtDirect: Loading config from $file");
@@ -214,8 +226,9 @@ sub _init {
 			# TODO - proper errors for Apache
 			die "Unable to load $class - $@";
 		}
-		#if ($config->{$action}{Instantiate}) {
-		#}
+		if ($config->{$action}{Instantiate}) {
+			$config->{$action}{Object} = $class->new($config->{$action}{Instantiate});
+		}
 	}
 }
 
@@ -224,7 +237,7 @@ __END__
 
 =head1 NAME
 
-IlodeAuth::Apache - [One line description of module's purpose here]
+Apache::RPC::ExtDirect - A backend server stack for the Ext JS 3.0 Ext.Direct framework
 
 =head1 VERSION
 
@@ -232,22 +245,22 @@ This document describes IlodeAuth::Apache version 0.0.1
 
 =head1 SYNOPSIS
 
-	PerlModule ExtDirect
+	PerlModule Apache::RPC::ExtDirect
 
 	# This
 	<Location /data>
 		SetHandler modperl
-		PerlResponseHandler ExtDirect
+		PerlResponseHandler Apache::RPC::ExtDirect
 	</Location>
 
 	# OR
 	<Location /data/api>
 		SetHandler modperl
-		PerlResponseHandler ExtDirect->api
+		PerlResponseHandler Apache::RPC::ExtDirect->api
 	</Location>
 	<Location /data/router>
 		SetHandler modperl
-		PerlResponseHandler ExtDirect->router
+		PerlResponseHandler Apache::RPC::ExtDirect->router
 	</Location>
 
 =head1 DESCRIPTION
