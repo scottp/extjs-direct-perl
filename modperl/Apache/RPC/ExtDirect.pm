@@ -8,7 +8,7 @@ use Apache2::RequestRec ();
 use Apache2::RequestIO ();
 use Apache2::Const -compile => qw(OK NOT_FOUND HTTP_MOVED_TEMPORARILY);
 use Apache2::RequestUtil;
-# use Apache2::Request;
+use Apache2::Request;
 use Apache2::Log ;
 
 # ======================================================================

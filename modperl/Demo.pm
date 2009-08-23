@@ -44,12 +44,12 @@ sub updateBasicInfo {
 }
 
 sub doEcho {
-	my ($in) = @_;
+	my ($class, $in) = @_;
 	return $in;
 }
 
 sub doTest {
-	my ($in) = @_;
+	my ($class, $in) = @_;
 	if ($in =~ /cott/) {
 		return "You can not use 'Scott' in your name";
 	}

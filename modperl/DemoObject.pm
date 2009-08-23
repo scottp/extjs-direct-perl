@@ -1,4 +1,4 @@
-package Demo;
+package DemoObject;
 use JSON;
 
 sub new {
