@@ -26,6 +26,11 @@ modperl/
 	configuration, preloading the classes at apache startup and a choice
 	of class methods of instantiation for each action.
 
+module/
+	A reference implementation contained within a simple Perl Module.
+	This could either turn into a module used by frameworks (e.g.
+	Catalyst), or just as a reference.
+
 test/
 	Test Javascript and HTML. You will also need ExtJS 3.n
 

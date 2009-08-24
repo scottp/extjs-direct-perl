@@ -3,6 +3,7 @@ use warnings;
 use strict;
 #use CGI qw/:standard/;
 use JSON;
+use Config::Any;
 
 sub new {
 	my ($class, $config) = @_;
