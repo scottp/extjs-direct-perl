@@ -43,6 +43,7 @@ pre and post methods on action and each method
 Basic function to load 'before' and 'after' code on the action and
 the individual methods. NOTE: Currently, to implement security check
 you would need to do a 'die' to stop the process. See Debugging.
+NOTE: Consider updating to use 'Hook'=> {before=>...} instead.
 
 
 ======================================================================
