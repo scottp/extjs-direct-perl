@@ -3,6 +3,10 @@
 #	NOTE:
 #		- This could be used for basic access control restrictions
 #
+# NOTE on Convention
+# 	Keys are currently case sensitive
+# 	"Action" is as passed in from Ext Direct call
+# 	"Method" is as passed in from Ext Direct call (and also must match Perl	method)
 {
 
 	# LIST OF CLASSES BY NAME
@@ -36,8 +40,12 @@
 
 	Profile => {
 		Class => 'Demo',
+		# Example of before/after methods - could be used for security and clean up
+		#	string = method, string ref = Eval perl code, sub ref = sub
+		before => 'allowed',
+		after => 'clean',
 		Methods => {
-			getBasicInfo => { params => 2 },
+			getBasicInfo => { params => 2, before => 'getBasicInfo_test' },
 			getPhoneInfo => { params => 1 },
 			getLocationInfo => { params => 1 },
 					# NOTE: Should be a JSON true - how?

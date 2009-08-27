@@ -1,8 +1,7 @@
 package Apache::RPC::ExtDirect;
 use warnings;
 use strict;
-use version; our $VERSION = qv('0.0.3');
-use JSON;
+use version; our $VERSION = qv('0.0.4');
 use mod_perl2 ;
 use Apache2::RequestRec ();
 use Apache2::RequestIO ();
@@ -10,6 +9,9 @@ use Apache2::Const -compile => qw(OK NOT_FOUND HTTP_MOVED_TEMPORARILY);
 use Apache2::RequestUtil;
 use Apache2::Request;
 use Apache2::Log ;
+use JSON;
+use CGI;
+use Config::Any;
 
 # ======================================================================
 # CONFIG AND DATA STORE
@@ -86,6 +88,7 @@ sub api {
 			push @methods, {
 				name => $method,
 				len => $config->{$action}{Methods}{$method}{params},
+				$config->{$action}{Methods}{$method}{formHandler} ? (formHandler => JSON::true) : (),
 			};
 		}
 		$actions->{$action} = \@methods;
@@ -108,8 +111,7 @@ sub api {
 	$r->rflush();
 
 	$r->print(
-		"Ext.app.REMOTING_API = "
-			. to_json({
+		"Ext.app.REMOTING_API = " . to_json({
 			url => $uri,
 			type => 'remoting',
 			actions => $actions,
@@ -127,20 +129,31 @@ sub router {
 
 	my $config = _config($r->dir_config("ConfigFile"), $r);
 
-	# XXX INPUTS?
-	#	For now assume HTTP Post Data (not supporting separate fields yet, e.g. form post)
-	#	Can be single entry - {...}
-	#	or Multiple entry [{...},{...}]
-	# XXX This is high risk - reading in data and parsing as JSON, likely to fail
-
-	# Read raw input (can I just use $r->content ?)
-	my $content = "";
-	# TODO consider checking it is post ! (it must be)
-	die "No post data" unless ($r->headers_in->{'Content-length'} > 0);
-	$r->read($content,$r->headers_in->{'Content-length'});
-	my $data = from_json($content);
-	# Normalise into an array !
-	if (ref($data) ne "ARRAY") { $data = [ $data ]; }
+	my $type = "JSON";
+	my $data;
+	my $q = new CGI;
+	if ($q->param('POSTDATA')) {
+		# Read JSON from unformatted post data
+		$data = from_json($q->param('POSTDATA'));
+		if (ref($data) ne "ARRAY") { $data = [ $data ]; }
+	}
+	else {
+		$type = "FORM";
+		# Parse post data and normalise as per JSON version
+		my $raw_data = $q->Vars();
+		$data = [
+			{
+				action => $raw_data->{extAction},
+				method => $raw_data->{extMethod},
+				tid => $raw_data->{extTID},
+				type => $raw_data->{extType},
+				upload => $raw_data->{extUpload},
+				# TODO - remove ext[A-Z] entries above from list
+				data => [$raw_data],
+			}
+		];
+		# TODO - check for upload file !
+	}
 
 	# For each reqeust
 	my @results;
@@ -158,7 +171,9 @@ sub router {
 
 		$r->log->debug("ExtDirect: Executing $action/$method");
 
-		# Security check - access control rules
+		# TODO Security check - access control rules
+
+		# TODO "before" method
 
 		# Call the method (consider eval, capture errors etc)
 		my $result;
@@ -170,6 +185,13 @@ sub router {
 			$result = $class->$method(ref($data) eq "ARRAY" ? @$data : ());
 		}
 		
+		# TODO "after" method
+
+		# TODO - Debugging information
+		# 	type = 'exception'
+		# 	message = Message which helps the developer identify what error occurred on the server-side
+		# 	where = Message which tells the developer where the error occurred on the server-side.
+
 		# OUTPUT: {"type":"rpc","tid":2,"action":"TestAction","method":"doEcho","result":"sample"},
 		push @results, {
 			type => 'rpc',
@@ -180,9 +202,21 @@ sub router {
 		};
 	}
 
-	$r->content_type('text/plain');
-	$r->rflush();
-	$r->print(to_json(\@results));
+	# Return JSON or textarea wrapped HTML of JSON data.
+	if ($type eq "UPLOAD") {
+		# NOTE: HTML Format (single request - array? single entry? or just result section?
+		# XXX This is not tested - and may need to encode quotes
+		$r->print(
+			'<html><body><textarea>'
+			. to_json(\@results)
+			. '</textarea></body></html>'
+		);
+	}
+	else {
+		# TODO: Review correct mime type for return
+		$r->content_type('text/plain');
+		$r->print(to_json(\@results));
+	}
 	return Apache2::Const::OK;
 }
 
@@ -193,28 +227,21 @@ sub router {
 # Configuration - return the configuraiton
 sub _config {
 	my ($file, $r) = @_;
-
-	# Configuration file?
-	#	TODO: Multiple configuration formats
-	#		e.g. Direct Apache config
-	#		Perl configuration
-	#		Others, e.g. YAML
-	#		OR Make sure this code can be overloaded !
-
 	if (!exists($configs{$file})) {
 		$r->log->debug("ExtDirect: Loading config from $file");
-		my $config = do $file;
+		my $config = eval {
+			my $cfg = Config::Any->load_files({files => [$file], use_ext => 1,});
+			$cfg->[0]->{$file};
+		};
 		if ($@) { die "Failed to read config file $file - $@" }
-		# _init if not already
 		_init($config);
-		# Cache file?
 		$configs{$file} = $config;
 	}
 	return $configs{$file};
 }
 
 # Init the components based on the config input
-# Call only once after a config file is loaded (consider caching)
+# NOTE: Call only once after a config file is loaded
 sub _init {
 	my ($config) = @_;
 	
@@ -245,25 +272,46 @@ This document describes IlodeAuth::Apache version 0.0.1
 
 =head1 SYNOPSIS
 
-	PerlModule Apache::RPC::ExtDirect
+	# ======================================================================
+	# Basic Configuration
+	# ======================================================================
 
-	# This
+	PerlModule Apache::RPC::ExtDirect
 	<Location /data>
 		SetHandler modperl
 		PerlResponseHandler Apache::RPC::ExtDirect
+		PerlSetVar ConfigFile /full/path/to/config.pl
 	</Location>
 
-	# OR
+
+	# ======================================================================
+	# Advanced Configuration
+	# ======================================================================
+	
+	# Load modules after config, but before fork
+	PerlModule Apache::RPC::ExtDirect
+	PerlPostConfigHandler Apache::RPC::ExtDirect::post_config
+	PerlSetVar ExtDirect_Preload /full/path/to/config.pl,/another/config.pl
+	# (or after fork) PerlChildInitHandler Apache::RPC::ExtDirect::child_init
+
 	<Location /data/api>
 		SetHandler modperl
-		PerlResponseHandler Apache::RPC::ExtDirect->api
+		PerlResponseHandler Apache::RPC::ExtDirect::api
+		PerlSetVar ConfigFile /full/path/to/config.pl
 	</Location>
+
 	<Location /data/router>
 		SetHandler modperl
-		PerlResponseHandler Apache::RPC::ExtDirect->router
+		PerlResponseHandler Apache::RPC::ExtDirect::router
+		PerlSetVar ConfigFile /full/path/to/config.pl
 	</Location>
 
 =head1 DESCRIPTION
+
+Apache::RPC::ExtDirect is a full implementation of the Ext.Direct server side
+stack. It has the ability to: pre-load all necessary modules and configuration
+files at start up time; instantiate objects; generate the Javascript API
+(configuration); and route to the configured class.
 
 =head1 INTERFACE 
 
@@ -286,10 +334,11 @@ This document describes IlodeAuth::Apache version 0.0.1
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-IlodeAuth::Apache requires no configuration files or environment variables.
-
+Apache::RPC::ExtDirect requires no configuration files or environment variables.
 
 =head1 DEPENDENCIES
+
+Apache2, CGI, JSON and more...
 
 None.
 
@@ -312,8 +361,6 @@ TODO
 =head1 LICENCE AND COPYRIGHT
 
 Copyright (c) 2009, Scott Penrose C<< <scott@cpan.org> >>. All rights reserved.
-
-TODO
 
 =head1 DISCLAIMER OF WARRANTY
 

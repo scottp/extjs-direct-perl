@@ -1,0 +1,117 @@
+Full spec can be found here:
+
+	http://extjs.com/products/extjs/direct.php
+
+
+======================================================================
+OPTIONAL FEATURES - from Specification
+======================================================================
+Most of these notes refer to the modperl/ implementation.
+
+Remoting methods by metadata - Custom annotations and attributes
+----------------------------------------------------------------------
+STATUS: Not started - some form of introspection, or using Moose
+See Introspection below
+
+Programmatic, JSON or XML configuration
+----------------------------------------------------------------------
+STATUS: Complete
+
+Type conversion
+----------------------------------------------------------------------
+STATUS: Not started - consider some automation, e.g. Date formats
+
+Asynchronous method calls
+----------------------------------------------------------------------
+STATUS: Not started - consider threads, callbacks, Aysnc and POE.
+
+Method batching
+----------------------------------------------------------------------
+STATUS: Complete - Built in requirement
+
+
+File uploading
+----------------------------------------------------------------------
+STATUS: WIP
+
+Specify before and after actions to execute allowing for aspect 
+oriented programming. This is a powerful concept which can be used 
+for many uses such as security.
+----------------------------------------------------------------------
+STATUS: WIP (pre and post methods on action and each method)
+
+
+======================================================================
+OPTIONAL FEATURES - from Scott
+======================================================================
+
+Apache access controls
+----------------------------------------------------------------------
+STATUS: WIP (just user and group methods)
+Use basic Apache style user/group (valid-user or list) for access.
+This can be done with the before method, but it is nicer to be build in.
+
+Data integrity checking
+----------------------------------------------------------------------
+STATUS: Not started
+Ability to check what type of values we have received before
+executing the main method
+
+Data security checking
+----------------------------------------------------------------------
+STATUS: Not started
+Checking valid data inputs, like removal of NULL and script tags.
+Testing and changes to allow module to work in taint mode.
+
+Pre-loading Classes at Startup
+----------------------------------------------------------------------
+STATUS: Complete
+Used with an Apache handler, all classes and instantiations can be done
+at Apache start time, before any further forks. It can also be done
+post fork, in case instantiations need database or similar.
+(NOTE: Just use Apache::DBI for DB caching, but be aware of SQLite locks)
+
+Instantiation
+----------------------------------------------------------------------
+STATUS: Complete
+Each Perl class that is associated with an action can be used as a
+class with class methods, or instantiated as an object (optional
+parameters can be passed in via configuration - anything more complicated
+would need to be done by wrapper method) and call those object methods.
+
+Debugging
+----------------------------------------------------------------------
+STATUS: Not started
+Ability to turn on debugging to pass back further information to Ext
+in JSON readable format.
+
+Alternative class
+----------------------------------------------------------------------
+STATUS: Complete
+The actual class loaded for each "action" is defined in the configuraiton.
+
+Alternative methods
+----------------------------------------------------------------------
+STATUS: Not started
+It may be desirable to change the method called.
+E.g. an existing interface may use a legal javscript method name that
+is not legal in perl.
+
+======================================================================
+IMPORTANT IMPROVEMENTS
+======================================================================
+This lists important improvements that need to be made
+
+Configuration checks
+----------------------------------------------------------------------
+STATUS: Not started
+The system currently depends on a well formatted configuration file.
+But this is not checked at startup / read time.
+
+
+======================================================================
+BUGS
+======================================================================
+Outstanding bugs - remove when fixed.
+
+* post_config/child_init not able to read configuration data !

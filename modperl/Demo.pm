@@ -40,7 +40,12 @@ sub getLocationInfo {
 }
 
 sub updateBasicInfo {
-	return 1;
+	return {
+		success => JSON::false,
+		errors => {
+			email => 'Email already taken',
+		},
+	};
 }
 
 sub doEcho {
