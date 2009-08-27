@@ -38,7 +38,11 @@ Specify before and after actions to execute allowing for aspect
 oriented programming. This is a powerful concept which can be used 
 for many uses such as security.
 ----------------------------------------------------------------------
-STATUS: WIP (pre and post methods on action and each method)
+STATUS: Complete
+pre and post methods on action and each method
+Basic function to load 'before' and 'after' code on the action and
+the individual methods. NOTE: Currently, to implement security check
+you would need to do a 'die' to stop the process. See Debugging.
 
 
 ======================================================================
@@ -84,6 +88,10 @@ Debugging
 STATUS: Not started
 Ability to turn on debugging to pass back further information to Ext
 in JSON readable format.
+Full revamp of reporting and logging too.
+How to report normal faiulres, like a 'before' action failing, or 
+the access control limits. Need to consider standard JSON return data.
+See Ext internals for possible return values, similar to the debugging.
 
 Alternative class
 ----------------------------------------------------------------------

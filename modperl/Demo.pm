@@ -61,4 +61,19 @@ sub doTest {
 	return JSON::true;
 }
 
+sub allowed {
+	#if ( (time % 2) == 0) {
+	#	die "Sorry... even time...";
+	#}
+	return 1;
+}
+
+sub clean {
+	return 1;
+}
+
+sub getBasicInfo_test {
+	return 1;
+}
+
 1;

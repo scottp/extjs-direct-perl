@@ -173,19 +173,25 @@ sub router {
 
 		# TODO Security check - access control rules
 
-		# TODO "before" method
-
 		# Call the method (consider eval, capture errors etc)
-		my $result;
+		my $obj;
 		if ($config->{$action}{Instantiate}) {
-			$result = $config->{$action}{Object}->$method(ref($data) eq "ARRAY" ? @$data : ());
+			$obj = $config->{$action}{Object};
 		}
 		else {
-			my $class = $config->{$action}{Class} || $action;
-			$result = $class->$method(ref($data) eq "ARRAY" ? @$data : ());
+			$obj = $config->{$action}{Class} || $action;
 		}
 		
+		# TODO "before" method
+		_run($obj, $config->{$action}{before}, "Before $action");
+		_run($obj, $config->{$action}{Methods}{$method}{before}, "Before $action/$method");
+
+		# Run the actiual code
+		my $result = $obj->$method(ref($data) eq "ARRAY" ? @$data : ());
+
 		# TODO "after" method
+		_run($obj, $config->{$action}{before}, "After $action");
+		_run($obj, $config->{$action}{Methods}{$method}{before}, "After $action/$method");
 
 		# TODO - Debugging information
 		# 	type = 'exception'
@@ -223,6 +229,29 @@ sub router {
 # ======================================================================
 # Helpers
 # ======================================================================
+
+# Run code - scalar, code or method
+sub _run {
+	my ($obj, $req, $info) = @_;
+	if (ref($req) eq "SCALAR") {
+		eval $$req;
+		if ($@) {
+			die "Failed on $info - $@";
+		}
+	}
+	elsif (ref($req) eq "CODE") {
+		eval $req->($obj);
+		if ($@) {
+			die "Failed on $info - $@";
+		}
+	}
+	elsif (length($req) > 0) {
+		eval $obj->$req();
+		if ($@) {
+			die "Failed on $info - $@";
+		}
+	}
+}
 
 # Configuration - return the configuraiton
 sub _config {
