@@ -45,6 +45,9 @@ sub getLocationInfo {
 }
 
 sub updateBasicInfo {
+	my ($class, $in) = @_;
+	use Data::Dumper;
+	print STDERR "updateBasicInfo received - " . Dumper($in) . "\n";
 	return 1;
 }
 

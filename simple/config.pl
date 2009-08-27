@@ -19,7 +19,6 @@
 		getBasicInfo => { params => 2 },
 		getPhoneInfo => { params => 1 },
 		getLocationInfo => { params => 1 },
-				# NOTE: Should be a JSON true - how?
 		updateBasicInfo => { params => 2, formHandler => 1, },
 		doTest => { params => 1 },
 	},

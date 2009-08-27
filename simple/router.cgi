@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
-# use CGI qw/:standard/;
+use CGI qw/:standard :cgi-lib/;
 use JSON;
 use lib '.';
 use Demo;
@@ -16,7 +16,34 @@ my $CONFIG = do "config.pl";
 #	Can be single entry - {...}
 #	or Multiple entry [{...},{...}]
 
-my $data = _read_content();
+# ==============================================================================
+# REQUEST DATA - Post data (not form encoded) or a single form post request
+# ==============================================================================
+my $data;
+if (param('POSTDATA')) {
+	$data = from_json(param('POSTDATA'));
+}
+else {
+	# ext specific variables here...
+	# 	extAction	Profile
+	# 	extMethod	updateBasicInfo
+	# 	extTID	8
+	# 	extType	rpc
+	# 	extUpload	false
+	my $raw_data = Vars();
+	$data = [
+		{
+			action => $raw_data->{extAction},
+			method => $raw_data->{extMethod},
+			tid => $raw_data->{extTID},
+			type => $raw_data->{extType},
+			upload => $raw_data->{extUpload},
+			# TODO - remove ext[A-Z] entries above from list
+			data => [$raw_data],
+		}
+	];
+}
+
 # Normalise into an array !
 if (ref($data) ne "ARRAY") {
 	$data = [ $data ];
@@ -58,20 +85,8 @@ foreach my $request (@$data) {
 	
 }
 
-print "Content-type: text/plain\n\n";
+# TODO: Consider UTF-8
+print header('text/plain');
 print to_json(\@results);
 
 exit 0;
-
-# HACK TO LOAD RAW DATA !
-# 	Read the undecoded data !
-#	NOTE:
-#		Not sure if that is correct?
-#		Shoudl we decode?
-sub _read_content {
-	my $length = $ENV{CONTENT_LENGTH};
-	my $buf;
-	read STDIN, $buf, $length;
-	return from_json($buf);
-}
-

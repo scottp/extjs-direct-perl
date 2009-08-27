@@ -17,6 +17,7 @@ foreach my $class (keys %$CONFIG) {
 		push @methods, {
 			name => $method,
 			len => $CONFIG->{$class}{$method}{params},
+			$CONFIG->{$class}{$method}{formHandler} ? (formHandler => JSON::true) : (),
 		};
 	}
 	$actions->{$class} = \@methods;
