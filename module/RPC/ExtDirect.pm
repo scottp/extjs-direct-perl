@@ -34,7 +34,8 @@ sub api {
 	$url =~ s/api/router/;
 
 	# NOTE: This is not JSON, it is actual Javascript being laoded ! Thus the "Ext.app... ="
-	print header(-type => 'text/plain');
+	# XXX Support for format=json !
+	print header(-type => 'text/javascript');
 	print "Ext.app.REMOTING_API = ";
 	print to_json({
 		url => $url,
@@ -95,7 +96,7 @@ sub router {
 		
 	}
 
-	print "Content-type: text/plain\n\n";
+	print "Content-type: application/json\n\n";
 	print to_json(\@results);
 }
 

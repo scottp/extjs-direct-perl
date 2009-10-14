@@ -86,7 +86,7 @@ foreach my $request (@$data) {
 }
 
 # TODO: Consider UTF-8
-print header('text/plain');
+print header('application/json');
 print to_json(\@results);
 
 exit 0;

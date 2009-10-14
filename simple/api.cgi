@@ -27,12 +27,22 @@ my $url = $ENV{SCRIPT_NAME};
 $url =~ s/api/router/;
 
 # NOTE: This is not JSON, it is actual Javascript being laoded ! Thus the "Ext.app... ="
-print header(-type => 'text/plain');
-print "Ext.app.REMOTING_API = ";
-print to_json({
-	url => $url,
-	type => 'remoting',
-	actions => $actions,
-});
+if (param('format') && (param('format') eq 'json')) {
+	print header(-type => 'application/json');
+	print to_json({
+		url => $url,
+		type => 'remoting',
+		actions => $actions,
+	});
+}
+else {
+	print header(-type => 'text/javascript');
+	print "Ext.app.REMOTING_API = ";
+	print to_json({
+		url => $url,
+		type => 'remoting',
+		actions => $actions,
+	});
+}
 
 exit 0;

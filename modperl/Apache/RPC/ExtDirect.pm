@@ -1,7 +1,7 @@
 package Apache::RPC::ExtDirect;
 use warnings;
 use strict;
-use version; our $VERSION = qv('0.0.4');
+use version; our $VERSION = qv('0.0.5');
 use mod_perl2 ;
 use Apache2::RequestRec ();
 use Apache2::RequestIO ();
@@ -107,16 +107,27 @@ sub api {
 	# NOTE: This is not JSON, it is actual Javascript being laoded ! Thus the "Ext.app... ="
 
 	# XXX what type should this Javascript be output as?
-	$r->content_type('text/plain');
-	$r->rflush();
-
-	$r->print(
-		"Ext.app.REMOTING_API = " . to_json({
+	my $q = new CGI;
+	if ($q->param('format') && ($q->param('format') eq 'json')) {
+		$r->content_type('application/json');
+		$r->rflush();
+		$r->print(to_json({
 			url => $uri,
 			type => 'remoting',
 			actions => $actions,
-		})
-	);
+		}));
+	}
+	else {
+		$r->content_type('text/javascript');
+		$r->rflush();
+		$r->print(
+			"Ext.app.REMOTING_API = " . to_json({
+				url => $uri,
+				type => 'remoting',
+				actions => $actions,
+			})
+		);
+	}
 	
 	return Apache2::Const::OK;
 }
@@ -220,7 +231,7 @@ sub router {
 	}
 	else {
 		# TODO: Review correct mime type for return
-		$r->content_type('text/plain');
+		$r->content_type('application/json');
 		$r->print(to_json(\@results));
 	}
 	return Apache2::Const::OK;
