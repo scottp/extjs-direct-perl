@@ -82,6 +82,7 @@ sub api {
 
 	my $actions = {};
 	foreach my $action (keys %$config) {
+		next if ($action eq 'DEFAULT');
 		# The methods...
 		my @methods;
 		foreach my $method (keys %{$config->{$action}{Methods}}) {
@@ -166,6 +167,9 @@ sub router {
 		# TODO - check for upload file !
 	}
 
+	# DEFAULT/before
+	_run($obj, $config->{DEFAULT}{before}, "Before DEFAULT");
+
 	# For each reqeust
 	my @results;
 	foreach my $request (@$data) {
@@ -176,6 +180,9 @@ sub router {
 		my $data = $request->{data};
 
 		# If it exists ! (security issue)
+		if (!$config->{$action} || ($action eq "DEFAULT")) {
+			die "BAD REQUEST - Invalid action - $action";
+		}
 		unless ($config->{$action}{Methods}{$method}) {
 			die "BAD REQUEST - Invalid action/method - $action/$method";
 		}
@@ -201,8 +208,8 @@ sub router {
 		my $result = $obj->$method(ref($data) eq "ARRAY" ? @$data : ());
 
 		# TODO "after" method
-		_run($obj, $config->{$action}{before}, "After $action");
-		_run($obj, $config->{$action}{Methods}{$method}{before}, "After $action/$method");
+		_run($obj, $config->{$action}{after}, "After $action");
+		_run($obj, $config->{$action}{Methods}{$method}{after}, "After $action/$method");
 
 		# TODO - Debugging information
 		# 	type = 'exception'
@@ -218,6 +225,9 @@ sub router {
 			result => $result,
 		};
 	}
+
+	# DEFAULT/after
+	_run($obj, $config->{DEFAULT}{after}, "After DEFAULT");
 
 	# Return JSON or textarea wrapped HTML of JSON data.
 	if ($type eq "UPLOAD") {
@@ -269,11 +279,26 @@ sub _config {
 	my ($file, $r) = @_;
 	if (!exists($configs{$file})) {
 		$r->log->debug("ExtDirect: Loading config from $file");
-		my $config = eval {
-			my $cfg = Config::Any->load_files({files => [$file], use_ext => 1,});
-			$cfg->[0]->{$file};
-		};
-		if ($@) { die "Failed to read config file $file - $@" }
+		my $config;
+	
+		# Load from a perl module (primative - consider fix !)
+		if ($file =~ /::/) {
+			# XXX what about just a load?
+			$config = eval qq{
+				use $file;
+				return $file} . qq{->config();
+			};
+			if ($@) { die "Failed to read config file $file - $@" }
+		}
+
+		# Load from a file
+		else {
+			$config = eval {
+				my $cfg = Config::Any->load_files({files => [$file], use_ext => 1,});
+				$cfg->[0]->{$file};
+			};
+			if ($@) { die "Failed to read config file $file - $@" }
+		}
 		_init($config);
 		$configs{$file} = $config;
 	}
@@ -304,7 +329,7 @@ __END__
 
 =head1 NAME
 
-Apache::RPC::ExtDirect - A backend server stack for the Ext JS 3.0 Ext.Direct framework
+Apache::RPC::ExtDirect - A backend server stack for the Ext JS 3.0 Ext.Direct framework (ALPHA)
 
 =head1 VERSION
 

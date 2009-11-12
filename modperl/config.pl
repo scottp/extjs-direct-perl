@@ -9,6 +9,13 @@
 # 	"Method" is as passed in from Ext Direct call (and also must match Perl	method)
 {
 
+	# Default action / details
+	# 	Support for overall before/after methods
+	DEFAULT => {
+		before => 'allowed',
+		after => 'clean',
+	},
+
 	# LIST OF CLASSES BY NAME
 	#	These are known as "Actions" in Direct
 	#	Lookup, User, Profile ...
