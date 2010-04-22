@@ -1,27 +1,50 @@
 package Attribute::ExtDirect;
 use Attribute::Handlers;
-use base qw/Exporter/;
+use Exporter qw/import/;
 @EXPORT = qw/ext_config/;
 
-# ======================================================================
-# XXX Export the "ext_config" sub
-our $ext_config = {
-	Class => '.',
-	Methods => {},
-};
-sub ext_config {
-	use Data::Dumper;
-	print Dumper($ext_config);
+my $DEBUG = 0;
+
+# Original Configuration & override during import
+our $ext_config_data = {Methods => {}};
+our $ext_config_name = '';
+sub import2 {
+	my ($class, $config) = @_;
+
+	# Class name - passed in as config, else assume short version of class
+	my $ext_config_name = $config->{Name} || $class;
+	$ext_config_name =~ s/^.*:://g;
+
+	$ext_config_data = {
+		Class => $class,
+	};
+	
+	# DEFAULT - before/afters
+	#if (ref($config) eq "HASH") {
+	#	# TODO - just copy for now, consider alternatives...
+	#	$ext_config = $config;
+	#}
+
+	$ext_config_data{Methods} = {};
+
+	return $class->SUPER::import();
 }
 
 # ======================================================================
+# Exported 'ext_config' for all modules
+sub ext_config {
+	return {
+		$ext_config_name => $ext_config_data
+	};
+}
+
+# ======================================================================
+# New attribute "ExtDirect"
 sub UNIVERSAL::ExtDirect :ATTR(CODE) {
-	#my ($package, $symbol, $referent, $attr, $data, $phase, $filename, $linenum) = @_;
-	#print STDERR "Package=$packate; Symbol=$symbol; Ref=$referent; Attr=$attr; Data=$data\n";
     my ($pack, $ref, $ref2, $att4, $data) = @_;
 	my $name = *{$ref}{NAME};
-    print STDERR "Package=$pack, Subname=$name, Number of parameters=$data\n";
-	$ext_config->{Methods}{$name} = {
+    print STDERR "Package=$pack, Subname=$name, Number of parameters=$data\n" if ($DEBUG);
+	$ext_config_data->{Methods}{$name} = {
 		params => $data,
 	};
 }

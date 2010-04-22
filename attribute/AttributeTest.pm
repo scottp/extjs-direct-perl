@@ -1,11 +1,10 @@
 package AttributeTest;
-use Attribute::ExtDirect;
+use Attribute::ExtDirect {
+	Test => 1,
+	Fred => 'none',
+};
 
-sub new {
-	return bless {}, shift;
-}
-
-sub NowMe : ExtDirect(3) {
+sub calc : ExtDirect(3) {
 	my ($x, $y, $z) = @_;
 	return ($x * $y * $z);
 }
